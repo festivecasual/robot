@@ -1,6 +1,7 @@
 # Joystick access methods sourced heavily from https://gist.github.com/rdb/8864666 (Public Domain per the Unilicense)
 
 import array
+import struct
 from fcntl import ioctl
 
 import joystick
@@ -45,7 +46,21 @@ for btn in buf[:num_buttons]:
     button_map.append(btn_name)
     button_states[btn_name] = 0
 
-
-print(button_map)
-print(button_states)
+while True:
+    evbuf = jsdev.read(8)
+    if evbuf:
+        time, value, type, number = struct.unpack('IhBB', evbuf)
+        if type & 0x80:
+            pass
+        if type & 0x01:
+            button = button_map[number]
+            if button:
+                button_states[button] = value
+                print('%s %s' % (button, 'pressed' if value else 'released'))
+        if type & 0x02:
+            axis = axis_map[number]
+            if axis:
+                fvalue = value / 32767.0
+                axis_states[axis] = fvalue
+                print('%s: %.3f' % (axis, fvalue))
 

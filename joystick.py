@@ -41,18 +41,18 @@ button_names = {
     0x12a : 'base5',
     0x12b : 'base6',
     0x12f : 'dead',
-    0x130 : 'a',
-    0x131 : 'b',
-    0x132 : 'c',
-    0x133 : 'x',
-    0x134 : 'y',
-    0x135 : 'z',
-    0x136 : 'tl',
-    0x137 : 'tr',
-    0x138 : 'tl2',
-    0x139 : 'tr2',
-    0x13a : 'select',
-    0x13b : 'start',
+    0x130 : 'b1',  # a
+    0x131 : 'b2',  # b
+    0x132 : 'b3',  # c
+    0x133 : 'b4',  # x
+    0x134 : 'lb',  # y
+    0x135 : 'rb',  # z
+    0x136 : 'lt',  # tl
+    0x137 : 'rt',  # tr
+    0x138 : 'start',  # tl2
+    0x139 : 'select',  # tr2
+    0x13a : 'ls',  # select
+    0x13b : 'rs',  # start
     0x13c : 'mode',
     0x13d : 'thumbl',
     0x13e : 'thumbr',
