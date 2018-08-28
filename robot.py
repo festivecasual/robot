@@ -3,6 +3,7 @@
 import array
 import struct
 from fcntl import ioctl
+import sys
 
 import joystick
 
@@ -56,11 +57,21 @@ while True:
             button = button_map[number]
             if button:
                 button_states[button] = value
-                print('%s %s' % (button, 'pressed' if value else 'released'))
         if type & 0x02:
             axis = axis_map[number]
             if axis:
                 fvalue = value / 32767.0
                 axis_states[axis] = fvalue
-                print('%s: %.3f' % (axis, fvalue))
+            if axis == 'x' or axis == 'y':
+                # Motor solutions taken from: http://home.kendra.com/mauser/joystick.html
+                jx = -1 * axis_states['x']
+                jy = -1 * axis_states['y']
+                v = jy * (2 - abs(jx))
+                w = jx * (2 - abs(jy))
+                R = (v + w) / 2.0
+                L = (v - w) / 2.0
+                sys.stdout.write('\b' * 50)
+                sys.stdout.flush()
+                sys.stdout.write('Motor: L = %.3f, R = %.3f' % (L, R))
+                sys.stdout.flush()
 
