@@ -5,9 +5,16 @@ import struct
 from fcntl import ioctl
 import sys
 
+import serial
+
 import joystick
 
 
+# Initialize serial port for motor driver
+driver = serial.Serial('/dev/ttyS0', 9600)
+driver.write(b'E\r\n')
+
+# Initialize joystick connection
 jsdev = open('/dev/input/js0', 'rb')
 
 # Device name
@@ -70,8 +77,6 @@ while True:
                 w = jx * (2 - abs(jy))
                 R = (v + w) / 2.0
                 L = (v - w) / 2.0
-                sys.stdout.write('\b' * 50)
-                sys.stdout.flush()
-                sys.stdout.write('Motor: L = %.3f, R = %.3f' % (L, R))
-                sys.stdout.flush()
+                command = 'M0%s%d\r\nM1%s%d\r\n' % ('F' if R > 0 else 'R', abs(int(50 * R)), 'F' if L > 0 else 'R', abs(int(50 * L)))
+                driver.write(command.encode('ascii'))
 
