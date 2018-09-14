@@ -77,6 +77,6 @@ while True:
                 w = jx * (2 - abs(jy))
                 R = (v + w) / 2.0
                 L = (v - w) / 2.0
-                command = 'M0%s%d\r\nM1%s%d\r\n' % ('F' if R > 0 else 'R', abs(int(50 * R)), 'F' if L > 0 else 'R', abs(int(50 * L)))
+                command = 'M1%s%d\r\nM0%s%d\r\n' % ('F' if R > 0 else 'R', abs(int(100 * R)), 'F' if L > 0 else 'R', abs(int(100 * L)))
                 driver.write(command.encode('ascii'))
 
