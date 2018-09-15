@@ -1,2 +1,3 @@
 pyserial
+google-cloud-texttospeech
 

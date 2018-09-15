@@ -12,6 +12,7 @@ import joystick
 
 # Initialize serial port for motor driver
 driver = serial.Serial('/dev/ttyS0', 9600)
+driver.write(b'M0F0\r\nM1F0\r\n')
 driver.write(b'E\r\n')
 
 # Initialize joystick connection
