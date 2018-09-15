@@ -1,3 +1,4 @@
 pyserial
 google-cloud-texttospeech
+pygame
 
