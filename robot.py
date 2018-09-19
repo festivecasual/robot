@@ -33,8 +33,6 @@ buf = array.array('B', [0])
 ioctl(jsdev, 0x80016a12, buf)  # JSIOCGBUTTONS
 num_buttons = buf[0]
 
-print('Connected to joystick: %s (%d axes, %d buttons)' % (js_name, num_axes, num_buttons))
-
 # Axis map
 axis_map = []
 axis_states = {}
@@ -72,12 +70,12 @@ while True:
                 axis_states[axis] = fvalue
             if axis == 'x' or axis == 'y':
                 # Motor solutions taken from: http://home.kendra.com/mauser/joystick.html
-                jx = -1 * axis_states['x']
-                jy = -1 * axis_states['y']
+                jx = axis_states['x']
+                jy = axis_states['y']
                 v = jy * (2 - abs(jx))
                 w = jx * (2 - abs(jy))
                 R = (v + w) / 2.0
                 L = (v - w) / 2.0
-                command = 'M1%s%d\r\nM0%s%d\r\n' % ('F' if R > 0 else 'R', abs(int(100 * R)), 'F' if L > 0 else 'R', abs(int(100 * L)))
+                command = 'M0%s%d\r\nM1%s%d\r\n' % ('F' if R > 0 else 'R', abs(int(100 * R)), 'F' if L > 0 else 'R', abs(int(100 * L)))
                 driver.write(command.encode('ascii'))
 

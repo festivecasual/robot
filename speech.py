@@ -11,7 +11,7 @@ with contextlib.redirect_stdout(None):
 
 
 client = texttospeech.TextToSpeechClient()
-voice = texttospeech.types.VoiceSelectionParams(language_code='en-GB', name="en-US-Wavenet-F")
+voice = texttospeech.types.VoiceSelectionParams(language_code='en-GB', name="en-US-Wavenet-A")
 
 audio_config = texttospeech.types.AudioConfig(audio_encoding=texttospeech.enums.AudioEncoding.MP3)
 
