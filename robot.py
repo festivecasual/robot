@@ -4,14 +4,24 @@ import array
 import struct
 from fcntl import ioctl
 import sys
+import time
 
 import serial
+import RPi.GPIO as GPIO
 
 import joystick
 
 
+GPIO.setmode(GPIO.BCM)
+
+# Enable power to the motor driver board
+GPIO.setup(4, GPIO.OUT, initial=GPIO.LOW)
+GPIO.output(4, GPIO.HIGH)
+time.sleep(1)
+
 # Initialize serial port for motor driver
 driver = serial.Serial('/dev/ttyS0', 9600)
+time.sleep(1)
 driver.write(b'M0F0\r\nM1F0\r\n')
 driver.write(b'E\r\n')
 
@@ -53,29 +63,35 @@ for btn in buf[:num_buttons]:
     button_map.append(btn_name)
     button_states[btn_name] = 0
 
-while True:
-    evbuf = jsdev.read(8)
-    if evbuf:
-        time, value, type, number = struct.unpack('IhBB', evbuf)
-        if type & 0x80:
-            pass
-        if type & 0x01:
-            button = button_map[number]
-            if button:
-                button_states[button] = value
-        if type & 0x02:
-            axis = axis_map[number]
-            if axis:
-                fvalue = value / 32767.0
-                axis_states[axis] = fvalue
-            if axis == 'x' or axis == 'y':
-                # Motor solutions taken from: http://home.kendra.com/mauser/joystick.html
-                jx = axis_states['x']
-                jy = axis_states['y']
-                v = jy * (2 - abs(jx))
-                w = jx * (2 - abs(jy))
-                R = (v + w) / 2.0
-                L = (v - w) / 2.0
-                command = 'M0%s%d\r\nM1%s%d\r\n' % ('F' if R > 0 else 'R', abs(int(100 * R)), 'F' if L > 0 else 'R', abs(int(100 * L)))
-                driver.write(command.encode('ascii'))
+try:
+    while True:
+        evbuf = jsdev.read(8)
+        if evbuf:
+            time, value, type, number = struct.unpack('IhBB', evbuf)
+            if type & 0x80:
+                pass
+            if type & 0x01:
+                button = button_map[number]
+                if button:
+                    button_states[button] = value
+            if type & 0x02:
+                axis = axis_map[number]
+                if axis:
+                    fvalue = value / 32767.0
+                    axis_states[axis] = fvalue
+                if axis == 'x' or axis == 'y':
+                    # Motor solutions taken from: http://home.kendra.com/mauser/joystick.html
+                    jx = axis_states['x']
+                    jy = axis_states['y']
+                    v = jy * (2 - abs(jx))
+                    w = jx * (2 - abs(jy))
+                    R = (v + w) / 2.0
+                    L = (v - w) / 2.0
+                    command = 'M0%s%d\r\nM1%s%d\r\n' % ('F' if R > 0 else 'R', abs(int(100 * R)), 'F' if L > 0 else 'R', abs(int(100 * L)))
+                    driver.write(command.encode('ascii'))
+except KeyboardInterrupt:
+    pass
+finally:
+    GPIO.output(4, GPIO.LOW)
+    GPIO.cleanup()
 
