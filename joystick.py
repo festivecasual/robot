@@ -1,3 +1,10 @@
+# Joystick access methods sourced heavily from https://gist.github.com/rdb/8864666 (Public Domain per the Unilicense)
+
+import array
+import struct
+from fcntl import ioctl
+
+
 axis_names = {
     0x00 : 'x',
     0x01 : 'y',
@@ -68,4 +75,43 @@ button_names = {
     0x2c2 : 'dpad_up',
     0x2c3 : 'dpad_down',
 }
+
+class Joystick(object):
+    def __init__(self, device='/dev/input/js0'):
+        self.dev = open(device, 'rb')
+
+        # Device name
+        buf = array.array('B', [0] * 64)
+        ioctl(self.dev, 0x80006a13 + (0x10000 * len(buf)), buf)  # JSIOCGNAME(len)
+        self.name = buf.tobytes().decode('ascii')
+
+        # Number of axes
+        buf = array.array('B', [0])
+        ioctl(self.dev, 0x80016a11, buf)  # JSIOCGAXES
+        self.num_axes = buf[0]
+
+        # Number of buttons
+        buf = array.array('B', [0])
+        ioctl(self.dev, 0x80016a12, buf)  # JSIOCGBUTTONS
+        self.num_buttons = buf[0]
+
+        # Axis map
+        self.axis_map = []
+        self.axis_states = {}
+        buf = array.array('B', [0] * 0x40)
+        ioctl(self.dev, 0x80406a32, buf)  # JSIOCGAXMAP
+        for axis in buf[:self.num_axes]:
+            axis_name = axis_names.get(axis, 'unknown(0x%02x)' % axis)
+            self.axis_map.append(axis_name)
+            self.axis_states[axis_name] = 0.0
+
+        # Button map
+        self.button_map = []
+        self.button_states = {}
+        buf = array.array('H', [0] * 200)
+        ioctl(self.dev, 0x80406a34, buf)  # JSIOCGBTNMAP
+        for btn in buf[:self.num_buttons]:
+            btn_name = button_names.get(btn, 'unknown(0x%03x)' % btn)
+            self.button_map.append(btn_name)
+            self.button_states[btn_name] = 0
 
