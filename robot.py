@@ -1,7 +1,8 @@
 import sys
 import asyncio
-import serial
+
 import RPi.GPIO as GPIO
+import serial
 
 sys.path.append('./contrib')
 import busio
@@ -39,11 +40,6 @@ GPIO.output(4, GPIO.HIGH)
 
 # Initialize serial port for motor driver
 driver = serial.Serial('/dev/ttyS0', 9600)
-driver.write(b'M0F0\r\nM1F0\r\n')
-driver.write(b'E\r\n')
-
-# Initialize the joystick
-joystick = Joystick()
 
 # Initialize the PCA9685 servo controller
 pca = PCA9685(busio.I2C(SCL, SDA))
@@ -55,8 +51,37 @@ right_arm = InvertedServo(pca.channels[1], min_pulse=750, max_pulse=2350)
 left_arm.angle = 180
 right_arm.angle = 180
 
+# Get the main async event loop
 loop = asyncio.get_event_loop()
 
+# Initialize the joystick
+joystick = Joystick()
+joystick.register(loop)
+
+
+def locomote(js, axis, value):
+    jx = js.axis_states['x']
+    jy = js.axis_states['y']
+    if jx or jy:
+        # At least one of the x-y axes is active, let's send a motor speed command and enable the motors
+
+        # Motor solutions taken from: http://home.kendra.com/mauser/joystick.html
+        v = jy * (2 - abs(jx))
+        w = jx * (2 - abs(jy))
+        R = (v + w) / 2.0
+        L = (v - w) / 2.0
+
+        command = 'M0%s%d\r\nM1%s%d\r\nE\r\n' % ('F' if R > 0 else 'R', abs(int(100 * R)), 'F' if L > 0 else 'R', abs(int(100 * L)))
+        driver.write(command.encode('ascii'))
+    else:
+        # No movement axes are active, disable motors
+        driver.write('D\r\n'.encode('ascii')) 
+
+joystick.add_axis_callback('x', locomote)
+joystick.add_axis_callback('y', locomote)
+
+
+# Set up the socket server
 coro = asyncio.start_server(handle_socket, port=5656)
 loop.run_until_complete(coro)
 

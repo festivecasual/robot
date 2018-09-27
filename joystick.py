@@ -56,8 +56,8 @@ button_names = {
     0x135 : 'rb',  # z
     0x136 : 'lt',  # tl
     0x137 : 'rt',  # tr
-    0x138 : 'start',  # tl2
-    0x139 : 'select',  # tr2
+    0x138 : 'select',  # tl2
+    0x139 : 'start',  # tr2
     0x13a : 'ls',  # select
     0x13b : 'rs',  # start
     0x13c : 'mode',
@@ -79,6 +79,7 @@ button_names = {
 class Joystick(object):
     def __init__(self, device='/dev/input/js0'):
         self.dev = open(device, 'rb')
+        self.loop = None
 
         # Device name
         buf = array.array('B', [0] * 64)
@@ -97,21 +98,57 @@ class Joystick(object):
 
         # Axis map
         self.axis_map = []
+        self.axis_callbacks = {}
         self.axis_states = {}
         buf = array.array('B', [0] * 0x40)
         ioctl(self.dev, 0x80406a32, buf)  # JSIOCGAXMAP
         for axis in buf[:self.num_axes]:
             axis_name = axis_names.get(axis, 'unknown(0x%02x)' % axis)
             self.axis_map.append(axis_name)
+            self.axis_callbacks[axis_name] = []
             self.axis_states[axis_name] = 0.0
 
         # Button map
         self.button_map = []
+        self.button_callbacks = {}
         self.button_states = {}
         buf = array.array('H', [0] * 200)
         ioctl(self.dev, 0x80406a34, buf)  # JSIOCGBTNMAP
         for btn in buf[:self.num_buttons]:
             btn_name = button_names.get(btn, 'unknown(0x%03x)' % btn)
             self.button_map.append(btn_name)
+            self.button_callbacks[btn_name] = []
             self.button_states[btn_name] = 0
+
+    def get_input(self):
+        evbuf = self.dev.read(8)
+        if evbuf:
+            time, value, type, number = struct.unpack('IhBB', evbuf)
+            if type & 0x80:
+                pass
+            if type & 0x01:
+                button = self.button_map[number]
+                self.button_states[button] = value
+                for cb in self.button_callbacks[button]:
+                    self.loop.call_soon(cb, self, button, self.button_states[button])
+            if type & 0x02:
+                axis = self.axis_map[number]
+                self.axis_states[axis] = value / 32767.0
+                for cb in self.axis_callbacks[axis]:
+                    self.loop.call_soon(cb, self, axis, self.axis_states[axis])
+
+    def register(self, loop):
+        if (self.loop):
+            self.deregister()
+        self.loop = loop
+        loop.add_reader(self.dev, self.get_input)
+
+    def deregister(self):
+        self.loop.remove_reader(self.dev)
+
+    def add_button_callback(self, button_name, cb):
+        self.button_callbacks[button_name].append(cb)
+
+    def add_axis_callback(self, axis_name, cb):
+        self.axis_callbacks[axis_name].append(cb)
 
