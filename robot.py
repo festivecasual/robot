@@ -51,10 +51,6 @@ right_arm = InvertedServo(pca.channels[1], min_pulse=750, max_pulse=2350)
 left_arm.angle = 180
 right_arm.angle = 180
 
-# Initialize the head control
-head = Servo(pca.channels[3], min_pulse=750, max_pulse=2350)
-head.angle = 90
-
 # Get the main async event loop
 loop = asyncio.get_event_loop()
 
@@ -114,21 +110,6 @@ async def consume_queue():
             elif rest[0] == 'right':
                 while abs(right_arm.angle - angle) > 1:
                     right_arm.angle += 1 if angle > right_arm.angle else -1
-                    await asyncio.sleep(0.01)
-            else:
-                reply.write(('Bad command: ' + cmd).encode('ascii'))
-                continue
-        elif verb == 'turn':
-            rest = tail.split()
-            if rest[1] == 'left':
-                angle = 45
-            elif rest[1] == 'right':
-                angle = 135
-            elif rest[1] == 'forward':
-                angle = 90
-            if rest[0] == 'head':
-                while abs(head.angle - angle) > 1:
-                    head.angle += 1 if angle > head.angle else -1
                     await asyncio.sleep(0.01)
             else:
                 reply.write(('Bad command: ' + cmd).encode('ascii'))
