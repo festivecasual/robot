@@ -56,19 +56,20 @@ class Robot:
 
         # Initialize text to speech
         self.speech_client = texttospeech.TextToSpeechClient()
-        self.speech_voice = texttospeech.types.VoiceSelectionParams(language_code='en-GB', name="en-US-Wavenet-A")
+        self.speech_voice = texttospeech.types.VoiceSelectionParams(language_code='en-US', name="en-US-Wavenet-F")
         self.speech_audio_config = texttospeech.types.AudioConfig(audio_encoding=texttospeech.enums.AudioEncoding.MP3)
 
         # Initialize the master action queue
         self.action_queue = asyncio.Queue()
 
-    def locomote(self, x_speed, y_speed):
-        if x_speed or y_speed:
+    def locomote(self, x_vector, y_vector):
+        if x_vector or y_vector:
             # At least one of the x-y axes is active, let's send a motor speed command and enable the motors
 
             # Motor solutions taken from: http://home.kendra.com/mauser/joystick.html
-            v = y_speed * (2 - abs(x_speed))
-            w = x_speed * (2 - abs(y_speed))
+            v = y_vector * (2 - abs(x_vector))
+            w = x_vector * (2 - abs(y_vector))
+            L = (v - w) / 2.0
             R = (v + w) / 2.0
             command = 'M0%s%d\r\nM1%s%d\r\nE\r\n' % (
                     'F' if R > 0 else 'R',
@@ -85,8 +86,8 @@ class Robot:
 
     async def consume_queue(self):
         while True:
-            action = await self.action_queue.get()
-            await action
+            actions = await self.action_queue.get()
+            await asyncio.gather(*actions)
             self.action_queue.task_done()
 
     async def move_arm(self, arm_name, angle):
@@ -96,9 +97,11 @@ class Robot:
             await asyncio.sleep(0.01)
 
     async def set_eye_state(self, eye, state):
+        await asyncio.sleep(0.01)
         GPIO.output(GPIO_RIGHT_EYE if eye == 'right' else GPIO_LEFT_EYE, state)
 
     async def set_antenna_state(self, antenna, state):
+        await asyncio.sleep(0.01)
         GPIO.output(GPIO_RIGHT_ANTENNA if antenna == 'right' else GPIO_LEFT_ANTENNA, state)
 
     def say(self, text):
@@ -114,6 +117,11 @@ class Robot:
             await player.wait()
 
         return execute_say()
+
+    async def move(self, x_speed, y_speed, duration):
+        self.locomote(-1 * x_speed, -1 * y_speed)
+        await asyncio.sleep(duration)
+        self.locomote(0, 0)
 
     def shutdown(self):
         self.pca.deinit()
