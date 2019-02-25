@@ -1,5 +1,7 @@
 import asyncio
 
+import commands
+
 
 class ControlServer(object):
     def __init__(self, robot, port=5656, loop=asyncio.get_event_loop()):
@@ -17,9 +19,14 @@ class ControlServer(object):
             line = await reader.readline()
             if line == b'':
                 break
-            command = line.decode('utf8').strip()
-            self.robot.enqueue(command, writer)
-            print('Queued:', command)
+            command = line.decode('utf8').strip().lower()
+            try:
+                self.robot.enqueue(commands.parse(command, self.robot))
+            except SyntaxError as e:
+                print('<telnet> Not queued due to error:', command)
+                writer.write(b'Error: %s\r\n' % str(e).encode('ascii'))
+            else:
+                print('<telnet> Queued:', command)
             writer.write(b'>> ')
 
     def shutdown(self):

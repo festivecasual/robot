@@ -15,14 +15,26 @@ from servo import InvertedServo
 from server import ControlServer
 
 
+GPIO_MOTOR = 4
+GPIO_LEFT_EYE = 24
+GPIO_RIGHT_EYE = 23
+GPIO_LEFT_ANTENNA = 5
+GPIO_RIGHT_ANTENNA = 6
+
 class Robot:
     def __init__(self):
         # Set up GPIO for BCM pin number references
         GPIO.setmode(GPIO.BCM)
 
         # Enable power to the motor driver board
-        GPIO.setup(4, GPIO.OUT, initial=GPIO.LOW)
-        GPIO.output(4, GPIO.HIGH)
+        GPIO.setup(GPIO_MOTOR, GPIO.OUT, initial=GPIO.LOW)
+        GPIO.output(GPIO_MOTOR, GPIO.HIGH)
+
+        # Initialize "head lights" (antennae and eyes)
+        GPIO.setup(GPIO_LEFT_EYE, GPIO.OUT, initial=GPIO.LOW)
+        GPIO.setup(GPIO_RIGHT_EYE, GPIO.OUT, initial=GPIO.LOW)
+        GPIO.setup(GPIO_LEFT_ANTENNA, GPIO.OUT, initial=GPIO.LOW)
+        GPIO.setup(GPIO_RIGHT_ANTENNA, GPIO.OUT, initial=GPIO.LOW)
 
         # Initialize serial port for motor driver
         self.driver = serial.Serial('/dev/ttyS0', 9600)
@@ -37,8 +49,8 @@ class Robot:
         self.left_arm.angle = 180
         self.right_arm.angle = 180
 
-        # Initialize the master command queue
-        self.cmd_queue = asyncio.Queue()
+        # Initialize the master action queue
+        self.action_queue = asyncio.Queue()
 
     def locomote(self, x_speed, y_speed):
         if x_speed or y_speed:
@@ -58,42 +70,30 @@ class Robot:
             # No movement axes are active, disable motors
             self.driver.write('D\r\n'.encode('ascii')) 
 
-    def enqueue(self, command, reply_to):
-        self.cmd_queue.put_nowait((command, reply_to))
+    def enqueue(self, action):
+        self.action_queue.put_nowait(action)
 
     async def consume_queue(self):
         while True:
-            command, reply_to = await self.cmd_queue.get()
-            print('Consuming command:', command)
+            action = await self.action_queue.get()
+            await action
+            self.action_queue.task_done()
 
-            verb, _, tail = command.partition(' ')
-            if verb == 'move':
-                rest = tail.split()
-                if rest[2] == 'up':
-                    angle = 0
-                elif rest[2] == 'down':
-                    angle = 180
-                elif rest[2] == 'out':
-                    angle = 90
-                else:
-                    reply_to.write(('Bad command: ' + command).encode('ascii'))
-                    continue
-                if rest[0] == 'left':
-                    while abs(self.left_arm.angle - angle) > 1:
-                        self.left_arm.angle += 1 if angle > self.left_arm.angle else -1
-                        await asyncio.sleep(0.01)
-                elif rest[0] == 'right':
-                    while abs(self.right_arm.angle - angle) > 1:
-                        self.right_arm.angle += 1 if angle > self.right_arm.angle else -1
-                        await asyncio.sleep(0.01)
-            else:
-                reply_to.write(('Bad command: ' + command).encode('ascii'))
+    async def move_arm(self, arm_name, angle):
+        arm = self.left_arm if arm_name == 'left' else self.right_arm
+        while abs(arm.angle - angle) > 1:
+            arm.angle += 1 if angle > arm.angle else -1
+            await asyncio.sleep(0.01)
 
-            self.cmd_queue.task_done()
+    async def set_eye_state(self, eye, state):
+        GPIO.output(GPIO_RIGHT_EYE if eye == 'right' else GPIO_LEFT_EYE, state)
+
+    async def set_antenna_state(self, antenna, state):
+        GPIO.output(GPIO_RIGHT_ANTENNA if antenna == 'right' else GPIO_LEFT_ANTENNA, state)
 
     def shutdown(self):
         self.pca.deinit()
-        GPIO.output(4, GPIO.LOW)
+        GPIO.output(GPIO_MOTOR, GPIO.LOW)
         GPIO.cleanup()
 
 
@@ -104,7 +104,7 @@ if __name__ == '__main__':
     # Initialize the robot
     robot = Robot()
 
-    # Start the telnet command server
+    # Start the telnet control server
     control_server = ControlServer(robot)
 
     # Define the mechanism for attaching joystick axis events to robot motion
