@@ -1,6 +1,5 @@
 pyserial
 google-cloud-texttospeech
-pygame
 RPi.GPIO
 adafruit-circuitpython-motor
 

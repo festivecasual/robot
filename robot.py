@@ -25,6 +25,7 @@ GPIO_RIGHT_EYE = 23
 GPIO_LEFT_ANTENNA = 5
 GPIO_RIGHT_ANTENNA = 6
 
+
 class Robot:
     def __init__(self):
         # Set up GPIO for BCM pin number references
