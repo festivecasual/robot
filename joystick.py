@@ -138,7 +138,7 @@ class Joystick(object):
                     self.loop.call_soon(cb, self, axis, self.axis_states[axis])
 
     def register(self, loop):
-        if (self.loop):
+        if self.loop:
             self.deregister()
         self.loop = loop
         loop.add_reader(self.dev, self.get_input)
