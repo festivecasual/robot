@@ -25,6 +25,8 @@ set_both_eyes = re.compile('set both eyes (on|off)')
 set_antenna = re.compile('set (left|right) (ear|antenna) (on|off)')
 set_both_antennae = re.compile('set both (ears|antennas|antennae) (on|off)')
 
+say = re.compile('say (.+)')
+
 def parse(command, robot):
     match = move_arm.fullmatch(command)
     if match:
@@ -58,6 +60,10 @@ def parse(command, robot):
                 robot.set_antenna_state('left', GPIO.HIGH if match.group(2) == 'on' else GPIO.LOW),
                 robot.set_antenna_state('right', GPIO.HIGH if match.group(2) == 'on' else GPIO.LOW)
                 )
+
+    match = say.fullmatch(command)
+    if match:
+        return robot.say(match.group(1))
 
     raise SyntaxError('Unable to parse command')
 

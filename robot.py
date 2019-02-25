@@ -1,8 +1,12 @@
 import sys
 import asyncio
+import hashlib
+from pathlib import Path
 
 import RPi.GPIO as GPIO
 import serial
+
+from google.cloud import texttospeech
 
 sys.path.append('./contrib')
 import busio
@@ -49,6 +53,11 @@ class Robot:
         self.left_arm.angle = 180
         self.right_arm.angle = 180
 
+        # Initialize text to speech
+        self.speech_client = texttospeech.TextToSpeechClient()
+        self.speech_voice = texttospeech.types.VoiceSelectionParams(language_code='en-GB', name="en-US-Wavenet-A")
+        self.speech_audio_config = texttospeech.types.AudioConfig(audio_encoding=texttospeech.enums.AudioEncoding.MP3)
+
         # Initialize the master action queue
         self.action_queue = asyncio.Queue()
 
@@ -90,6 +99,20 @@ class Robot:
 
     async def set_antenna_state(self, antenna, state):
         GPIO.output(GPIO_RIGHT_ANTENNA if antenna == 'right' else GPIO_LEFT_ANTENNA, state)
+
+    def say(self, text):
+        cache = '/tmp/speech-%s.mp3' % hashlib.sha1(text.encode('ascii')).hexdigest()
+        speech_input = texttospeech.types.SynthesisInput(text=text)
+        response = self.speech_client.synthesize_speech(speech_input, self.speech_voice, self.speech_audio_config)
+        with open(cache, 'wb') as out:
+            out.write(response.audio_content)
+
+        async def execute_say():
+            player_exec = asyncio.create_subprocess_exec('/usr/bin/mpg321', cache, stdout=asyncio.subprocess.DEVNULL)
+            player = await player_exec
+            await player.wait()
+
+        return execute_say()
 
     def shutdown(self):
         self.pca.deinit()
