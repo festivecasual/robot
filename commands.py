@@ -1,5 +1,6 @@
 import asyncio
 import re
+import sys
 
 import RPi.GPIO as GPIO
 
@@ -89,4 +90,43 @@ def parse(command, robot):
             raise SyntaxError('Wait time is not valid')
 
     raise SyntaxError('Unable to parse command')
+
+
+def process_program(lines, robot):
+    action_list = []
+    current_line = 0
+    inside_group = False
+
+    while lines:
+        current_line += 1
+        command = lines.pop(0)
+
+        if command == '[':
+            if inside_group:
+                print('Error at line #%d: Nested groups are not allowed' % current_line)
+                sys.exit(-1)
+            inside_group = True
+            action_list.append([])
+        elif command == ']':
+            if not inside_group:
+                print('Error at line #%d: ] without matching [' % current_line)
+                sys.exit(-1)
+            inside_group = False
+        elif command == '':
+            pass
+        else:
+            try:
+                action = parse(command, robot)
+            except SyntaxError as e:
+                print('Error at line #%d: %s' % (current_line, str(e)))
+                sys.exit(-1)
+            if not inside_group:
+                action_list.append(action)
+            else:
+                action_list[-1].extend(action)
+
+    if inside_group:
+        print('Warning: Unclosed group')
+
+    return action_list
 

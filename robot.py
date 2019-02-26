@@ -17,6 +17,7 @@ from adafruit_pca9685 import PCA9685
 from joystick import Joystick
 from servo import InvertedServo
 from server import ControlServer
+import commands
 
 
 GPIO_MOTOR = 4
@@ -81,8 +82,8 @@ class Robot:
             # No movement axes are active, disable motors
             self.driver.write('D\r\n'.encode('ascii')) 
 
-    def enqueue(self, action):
-        self.action_queue.put_nowait(action)
+    def enqueue(self, actions):
+        self.action_queue.put_nowait(actions)
 
     async def consume_queue(self):
         while True:
@@ -136,18 +137,24 @@ if __name__ == '__main__':
     # Initialize the robot
     robot = Robot()
 
-    # Start the telnet control server
-    control_server = ControlServer(robot)
+    # Check for a program file argument (if there is one, don't load all the other control mechanisms)
+    if len(sys.argv) == 2:
+        with open(sys.argv[1], 'r') as program:
+            lines = [line.strip().lower() for line in program]
+            [robot.enqueue(action) for action in commands.process_program(lines, robot)]
+    else:
+        # Start the telnet control server
+        control_server = ControlServer(robot)
 
-    # Define the mechanism for attaching joystick axis events to robot motion
-    def joystick_movement(js, axis, value):
-        robot.locomote(js.axis_states['x'], js.axis_states['y'])
+        # Define the mechanism for attaching joystick axis events to robot motion
+        def joystick_movement(js, axis, value):
+            robot.locomote(js.axis_states['x'], js.axis_states['y'])
 
-    # Initialize the joystick
-    joystick = Joystick()
-    joystick.register(loop)
-    joystick.add_axis_callback('x', joystick_movement)
-    joystick.add_axis_callback('y', joystick_movement)
+        # Initialize the joystick
+        joystick = Joystick()
+        joystick.register(loop)
+        joystick.add_axis_callback('x', joystick_movement)
+        joystick.add_axis_callback('y', joystick_movement)
 
     # Initialize the robot's main command processing loop
     consumer = asyncio.ensure_future(robot.consume_queue())

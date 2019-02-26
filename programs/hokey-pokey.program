@@ -1,0 +1,42 @@
+set both eyes on
+say let's do the hokey pokey
+[
+  say you put your left arm in
+  move left arm out
+]
+wait 1
+[
+  say you put your left arm out
+  move left arm down
+]
+wait 1
+[
+  say you put your left arm in
+  move left arm out
+]
+say and you shake it all about
+move left arm 100
+move left arm 80
+move left arm 100
+wait 1
+move left arm down
+say you do the hokey pokey and you move ahead three seconds
+go
+[
+  set both ears on
+  say that's
+]
+[
+  set both ears off
+  say what it's
+]
+[
+  set both ears on
+  say all
+]
+[
+  set both ears off
+  say about
+]
+set both eyes off
+

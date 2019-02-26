@@ -1,0 +1,11 @@
+set both ears on
+set both eyes on
+say let's go on a walk
+wait 1
+go
+wait 1
+say i am tired
+set left eye off
+wait 2
+set both eyes off
+set both ears off
